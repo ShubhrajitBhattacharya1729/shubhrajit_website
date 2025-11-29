@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shubhrajit Bhattacharya</title>
+    
+    <!-- 1. Load Tailwind CSS (Styling) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+                        serif: ['"Cormorant Garamond"', 'Garamond', 'Georgia', 'serif'],
+                    },
+                    typography: {
+                        DEFAULT: { css: { maxWidth: '100%' } },
+                    },
+                },
+            },
+            plugins: [],
+        }
+    </script>
+
+    <!-- 2. Load Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <!-- 3. React & Babel (to run the code in browser) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .no-select { user-select: none; -webkit-user-select: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Lucide Icons (Using the global 'lucide' object isn't direct in React CDN, 
+        // so we create simple SVG wrappers or use a library. 
+        // For simplicity in this static file, I'll define small icon components manually 
+        // to ensure they work 100% without extra build steps.)
+
+        const Icon = ({ name, size = 20, className = "" }) => {
+            useEffect(() => {
+                lucide.createIcons();
+            }, []);
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+
+        // --- CUSTOM ICONS ---
+        const ArxivLogo = ({ size = 20, className = "" }) => (
+            <svg role="img" viewBox="0 0 100 100" width={size} height={size} xmlns="http://www.w3.org/2000/svg" className={className} fill="none">
+                <title>arXiv</title>
+                <path d="M80 20 L 20 80" stroke="#9CA3AF" strokeWidth="12" strokeLinecap="round" />
+                <path d="M20 20 L 80 80" stroke="#B31B1B" strokeWidth="12" strokeLinecap="round" />
+            </svg>
+        );
+
+        // --- LATEX PARSER ---
+        const LatexContent = ({ content, isReady }) => {
+            if (!isReady || typeof window === 'undefined' || !window.katex) {
+                return <span className="whitespace-pre-wrap">{content}</span>;
+            }
+            const renderMath = (math, displayMode) => {
+                try {
+                    return window.katex.renderToString(math, { displayMode, throwOnError: false });
+                } catch (e) { return math; }
+            };
+            const parts = content.split(/(\$\$[\s\S]*?\$\$)/g);
+            return (
+                <span>
+                    {parts.map((part, i) => {
+                        if (part.startsWith('$$') && part.endsWith('$$')) {
+                            return <div key={i} className="my-1 text-center" dangerouslySetInnerHTML={{ __html: renderMath(part.slice(2, -2), true) }} />;
+                        } else {
+                            const subParts = part.split(/(\$[\s\S]*?\$)/g);
+                            return (
+                                <span key={i}>
+                                    {subParts.map((subPart, j) => {
+                                        if (subPart.startsWith('$') && subPart.endsWith('$')) {
+                                            return <span key={j} dangerouslySetInnerHTML={{ __html: renderMath(subPart.slice(1, -1), false) }} />;
+                                        } else {
+                                            const textParts = subPart.split(/(\*\*[\s\S]*?\*\*)/g);
+                                            return <span key={j} className="whitespace-pre-wrap">
+                                                {textParts.map((textPart, k) => {
+                                                    if (textPart.startsWith('**') && textPart.endsWith('**')) return <strong key={k}>{textPart.slice(2, -2)}</strong>;
+                                                    return textPart;
+                                                })}
+                                            </span>;
+                                        }
+                                    })}
+                                </span>
+                            );
+                        }
+                    })}
+                </span>
+            );
+        };
+
+        // --- MAIN APP ---
+        function App() {
+            const [activeTab, setActiveTab] = useState('academic');
+            const [selectedCategory, setSelectedCategory] = useState('All');
+            const [selectedPost, setSelectedPost] = useState(null);
+            const [isDarkMode, setIsDarkMode] = useState(false);
+            const [fontMode, setFontMode] = useState('cm');
+            const [katexLoaded, setKatexLoaded] = useState(false);
+
+            useEffect(() => {
+                if (window.katex) setKatexLoaded(true);
+                lucide.createIcons(); // Initialize icons
+            }, [activeTab]); // Re-run when tab changes to render new icons
+
+            const profile = {
+                name: "Shubhrajit Bhattacharya",
+                title: "Ph.D. Student in Mathematics @ UChicago",
+                email: "shubhrajit@uchicago.edu",
+                socials: { headfi: "https://www.head-fi.org/members/mystic1729.598988/" }
+            };
+
+            const academicContent = {
+                about: `I am a Ph.D. student in Mathematics at The University of Chicago, advised by Frank Calegari. My research interests lie in Representation Theory & Arithmetic Geometry (The Langlands Program), Arithmetic Statistics, Iwasawa Theory, and Analytic Number Theory. Previously, I completed my Master's at UBC under Sujatha Ramdorai and my undergraduate studies at the Chennai Mathematical Institute.`,
+                education: [
+                    { year: "2024 - Present", degree: "Ph.D. in Mathematics", school: "The University of Chicago" },
+                    { year: "2022 - 2024", degree: "Master's in Mathematics", school: "The University of British Columbia" },
+                    { year: "2019 - 2022", degree: "B.Sc. (Honours) in Mathematics and Computer Science", school: "Chennai Mathematical Institute" }
+                ],
+                publications: [
+                    { year: "Submitted", title: "On Monic Abelian Trace-One Cubic Polynomials", journal: "Joint with Andrew O'Desky", link: "https://arxiv.org/abs/2310.17831" },
+                    { year: "Submitted", title: "Correlations of error terms for weighted prime counting functions", journal: "Joint with Greg Martin and Reginald Simpson", link: "https://arxiv.org/abs/2507.13504" },
+                    { year: "In Prep", title: "On Some Congruences of L-values at Negative Odd Integers", journal: "Thesis work" }
+                ],
+                teaching: [
+                    { role: "College Fellow", course: "MATH 16100/31 & 41 (Honors Calculus)", location: "UChicago" },
+                    { role: "Mentor", course: "UChicago DRP & REU 2025", location: "UChicago" },
+                    { role: "Teaching Assistant", course: "MATH 256 (Differential Equations)", location: "UBC" }
+                ]
+            };
+
+            const posts = [
+                { id: 5, title: "The Symmetry of Roots: Monic Abelian Trace-One Cubics", category: "Math", date: "Nov 2023", excerpt: "Exploring a specific family of number fields with cyclic symmetry and fixed trace.", content: `In algebra, we often classify polynomials by the symmetries of their roots—their Galois groups. A "cubic" polynomial has degree 3, generally looking like $P(x) = x^3 + a_2 x^2 + a_1 x + a_0$. Most random cubic polynomials have a Galois group of $S_3$ (all permutations). However, a special "Abelian" subfamily exists where the group is the cyclic group $C_3$. This implies the discriminant of the polynomial must be a perfect square. In my joint work with **Andrew O'Desky**, we investigate the density and distribution of such polynomials with an added arithmetic constraint: **Trace-One**. The trace is determined by the coefficient $a_2$. By fixing $a_2 = \\pm 1$, we restrict our attention to a specific slice of the moduli space. We study the counting function $N(X)$, the number of such polynomials with discriminant bounded by $X$. Our results refine classical heuristics (like Malle's conjecture) for this specific subfamily, providing explicit asymptotic formulas. $$ N(X) \\sim c \\cdot X^{1/2} (\\log X)^k $$ This work connects analytic number theory techniques with the algebraic structure of class groups.` },
+                { id: 6, title: "The Noise in the Primes: Correlations of Error Terms", category: "Math", date: "July 2025", excerpt: "Do different ways of counting primes 'race' against each other? A look at weighted error terms.", content: `The Prime Number Theorem gives us the "signal" of how primes are distributed: $\\pi(x) \\sim x / \\log x$. But as number theorists, we are often more obsessed with the "noise"—the error term: $$ E(x) = \\pi(x) - \\text{Li}(x) $$ Under the Riemann Hypothesis, this error is bounded by $x^{1/2} \\log x$. But does it fluctuate randomly? In this paper (joint with **Greg Martin** and **Reginald Simpson**), we look at *weighted* prime counting functions. Instead of counting every prime as "1", we might weigh them by $\\log p$ (giving the Chebyshev function $\\psi(x)$) or other arithmetic weights. We study the **correlation** between the error terms of these different weighted functions. If one error term is large and positive (an "excess" of primes), does that imply another weighted error term is also likely to be positive? We prove that for certain weights, these error terms are highly correlated, moving in lockstep, while for others, they are more independent. This has implications for "Prime Number Races" (Chebyshev's Bias), helping us understand the subtle statistical biases hidden in the sequence of prime numbers.` },
+                { id: 1, title: "My Head-Fi Profile: mystic1729", category: "Audiophilia", date: "Nov 2024", excerpt: "Connect with me on Head-Fi where I discuss gear, classifieds, and reviews.", content: `I am an active member of the Head-Fi community under the handle **mystic1729**. \n\nAs a mathematician, I appreciate both the objective measurements of audio gear and the subjective enjoyment of the "perfect" chain. You can find my full trade history, classifieds listings, and forum contributions on my profile.\n\n[Click here to visit my Head-Fi Profile](${profile.socials.headfi})` },
+                { id: 2, title: "Review: Sennheiser HD 600", category: "Audiophilia", date: "Nov 15, 2023", excerpt: "The reference standard. Why I sold my gaming headset for these legends.", content: "For years, I thought 'audiophile' was just a marketing term. Then I heard the HD600s. The veil was lifted. Suddenly, I could hear the chair squeak in the recording of 'Kind of Blue'. \n\nIn this post, I detail my setup chain: PC > Topping DAC > Tube Amp > Headphones. The clarity provided by the open-back design allows for a soundstage that feels like being in the room with the musicians, rather than having sound pumped directly into your ears." },
+                { id: 3, title: "Gear List & Current Chain (2025)", category: "Audiophilia", date: "Jan 2025", excerpt: "A living document of my current DACs, Amps, and Headphones.", content: "Current Setup:\n\n**Headphones:**\n- Sennheiser HD 600\n- (Add your other gear here)\n\n**Sources:**\n- Topping DAC\n\n**Amplification:**\n- Tube Amp (Placeholder)\n\n*Note: This list is updated frequently based on my trades on Head-Fi.*" }
+            ];
+
+            const photos = [
+                { id: 1, src: "IMG-20251101-WA0010.jpg", title: "Sacred Flame", date: "Nov 2025", settings: "Warm Light • Ritual", location: "Home" },
+                { id: 2, src: "1715841005023.jpg", title: "Urban Sunset", date: "May 2024", settings: "Golden Hour • Skyline", location: "City View" },
+                { id: 3, src: "IMG-20240620-WA0003.jpg", title: "Glass & Sky", date: "June 2024", settings: "Daylight • Architecture", location: "Downtown" },
+                { id: 4, src: "IMG-20251101-WA0008.jpg", title: "Monochrome Leaf", date: "Nov 2025", settings: "B&W • Macro", location: "Garden" },
+                { id: 5, src: "IMG-20251101-WA0012.jpg", title: "Autumn Planter", date: "Nov 2025", settings: "Natural Light • Flora", location: "Park" },
+                { id: 6, src: "IMG20250925222615.jpg", title: "Temple Interior", date: "Sep 2025", settings: "Low Light • Detail", location: "Temple" },
+                { id: 7, src: "IMG20251104155151.jpg", title: "Red Maple Street", date: "Nov 2025", settings: "Overcast • Street", location: "Neighborhood" },
+                { id: 8, src: "PXL_20240509_224427043.PORTRAIT.ORIGINAL.jpg", title: "Daisies in Grass", date: "May 2024", settings: "Macro • Daylight", location: "Field" }
+            ];
+
+            const mathPosts = posts.filter(post => post.category === 'Math');
+            const soundstagePosts = posts.filter(post => post.category !== 'Math');
+            const filteredSoundstagePosts = selectedCategory === 'All' ? soundstagePosts : soundstagePosts.filter(post => post.category === selectedCategory);
+
+            const theme = {
+                bg: isDarkMode ? 'bg-[#232326]' : 'bg-[#F5F2EA]',
+                text: isDarkMode ? 'text-[#E4E4E6]' : 'text-[#3E3D38]',
+                sidebarBg: isDarkMode ? 'bg-[#1C1C1F]/80' : 'bg-[#EAE6DB]/80',
+                sidebarBorder: isDarkMode ? 'border-[#333336]' : 'border-[#D6D2C4]',
+                mutedText: isDarkMode ? 'text-[#A1A1AA]' : 'text-[#78716C]',
+                accentBg: isDarkMode ? 'bg-[#3F3F46]' : 'bg-[#E7E5E4]',
+                inset3D: isDarkMode ? 'bg-[#1e1e21] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.6),inset_-1px_-1px_3px_rgba(255,255,255,0.08)]' : 'bg-[#eeece6] shadow-[inset_2px_2px_5px_rgba(168,162,158,0.25),inset_-2px_-2px_4px_rgba(255,255,255,0.9)]',
+                card3D: isDarkMode ? 'bg-gradient-to-br from-[#2d2d30] to-[#1a1a1d] shadow-[6px_6px_12px_rgba(0,0,0,0.3),-3px_-3px_8px_rgba(255,255,255,0.05)]' : 'bg-gradient-to-br from-[#ffffff] to-[#f2f0e9] shadow-[8px_8px_16px_rgba(168,162,158,0.1),-6px_-6px_12px_rgba(255,255,255,0.8)]',
+                card3DHover: isDarkMode ? 'hover:shadow-[8px_8px_16px_rgba(0,0,0,0.4),-4px_-4px_10px_rgba(255,255,255,0.08)] hover:-translate-y-0.5' : 'hover:shadow-[10px_10px_20px_rgba(168,162,158,0.15),-8px_-8px_16px_rgba(255,255,255,0.9)] hover:-translate-y-0.5',
+                activeNav: isDarkMode ? 'bg-gradient-to-br from-[#2d2d30] to-[#1a1a1d] border-t border-l border-white/10 shadow-[8px_8px_16px_rgba(0,0,0,0.4),-2px_-2px_4px_rgba(255,255,255,0.05)] text-[#E4E4E6] translate-y-[-1px]' : 'bg-gradient-to-br from-[#ffffff] to-[#f2f0e9] border-t border-l border-white shadow-[6px_6px_14px_rgba(168,162,158,0.15),-4px_-4px_8px_rgba(255,255,255,0.8)] text-[#44403C] translate-y-[-1px]',
+                inactiveNav: isDarkMode ? 'text-[#71717A] border-transparent hover:bg-[#2A2A2E]/30 hover:text-[#D4D4D8] hover:shadow-inner' : 'text-[#A8A29E] border-transparent hover:bg-[#FFFDF9]/30 hover:text-[#57534E] hover:shadow-inner',
+                activePill: isDarkMode ? 'bg-gradient-to-br from-[#2d2d30] to-[#1a1a1d] border-t border-l border-white/10 shadow-[5px_5px_10px_rgba(0,0,0,0.4),-2px_-2px_4px_rgba(255,255,255,0.05)] text-[#E4E4E6] translate-y-[-1px] font-semibold' : 'bg-gradient-to-br from-[#ffffff] to-[#f2f0e9] border-t border-l border-white shadow-[4px_4px_8px_rgba(168,162,158,0.15),-2px_-2px_6px_rgba(255,255,255,0.9)] text-[#44403C] translate-y-[-1px] font-semibold',
+                inactivePill: isDarkMode ? 'text-[#71717A] border-transparent hover:bg-[#2A2A2E]/30 hover:text-[#D4D4D8] hover:shadow-inner' : 'text-[#A8A29E] border-transparent hover:bg-[#FFFDF9]/30 hover:text-[#57534E] hover:shadow-inner',
+                textAudiophilia: isDarkMode ? 'text-[#fdba74]' : 'text-[#c2410c]', textMovies: isDarkMode ? 'text-[#93c5fd]' : 'text-[#1d4ed8]', textMusic: isDarkMode ? 'text-[#d8b4fe]' : 'text-[#7e22ce]', textMath: isDarkMode ? 'text-[#a7f3d0]' : 'text-[#059669]', textDefault: isDarkMode ? 'text-[#a1a1aa]' : 'text-[#52525b]',
+            };
+
+            const fontStyle = fontMode === 'cm' ? { fontFamily: '"Computer Modern Serif", serif' } : { fontFamily: '"Helvetica Neue", "Helvetica", "Arial", sans-serif' };
+
+            const HarmonicBackground = () => (
+                <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.06]" aria-hidden="true">
+                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                        <defs><pattern id="sine-wave" x="0" y="0" width="200" height="60" patternUnits="userSpaceOnUse"><path d="M0 30 Q 50 60 100 30 T 200 30" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.8"/><path d="M0 30 Q 25 10 50 30 T 100 30 T 150 30 T 200 30" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.6"/></pattern></defs>
+                        <rect width="100%" height="100%" fill="url(#sine-wave)" />
+                    </svg>
+                </div>
+            );
+
+            return (
+                <div style={fontStyle} className={`min-h-screen relative selection:bg-[#E7E5E4] selection:text-black transition-colors duration-700 ease-in-out ${theme.bg} ${theme.text}`}>
+                    <HarmonicBackground />
+                    <div className={`lg:fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-72 p-8 flex flex-col justify-between z-10 border-b lg:border-b-0 lg:border-r transition-colors duration-700 backdrop-blur-xl ${theme.sidebarBg} ${theme.sidebarBorder}`}>
+                        <div>
+                            <div className="flex justify-between items-start"><div><h1 className="text-4xl font-bold tracking-tight">{profile.name}</h1><p className={`mt-3 text-xl italic font-medium leading-relaxed ${theme.mutedText}`}>{profile.title}</p></div></div>
+                            <nav className="mt-12 space-y-4">
+                                <button onClick={() => { setActiveTab('academic'); setSelectedPost(null); }} className={`group w-full text-left px-5 py-3 rounded-xl transition-all duration-500 flex items-center gap-0 hover:gap-3 ${activeTab === 'academic' ? theme.activeNav : theme.inactiveNav}`}><div className="w-0 overflow-hidden opacity-0 group-hover:w-5 group-hover:opacity-100 transition-all duration-300"><Icon name="pi" size={20} strokeWidth={2} /></div><span className="font-bold text-lg tracking-wide">The Blackboard</span></button>
+                                <button onClick={() => { setActiveTab('math'); setSelectedPost(null); }} className={`group w-full text-left px-5 py-3 rounded-xl transition-all duration-500 flex items-center gap-0 hover:gap-3 ${activeTab === 'math' ? theme.activeNav : theme.inactiveNav}`}><div className="w-0 overflow-hidden opacity-0 group-hover:w-5 group-hover:opacity-100 transition-all duration-300"><Icon name="sigma" size={20} strokeWidth={2} /></div><span className="font-bold text-lg tracking-wide">Math Blog</span></button>
+                                <button onClick={() => { setActiveTab('snaps'); setSelectedPost(null); }} className={`group w-full text-left px-5 py-3 rounded-xl transition-all duration-500 flex items-center gap-0 hover:gap-3 ${activeTab === 'snaps' ? theme.activeNav : theme.inactiveNav}`}><div className="w-0 overflow-hidden opacity-0 group-hover:w-5 group-hover:opacity-100 transition-all duration-300"><Icon name="camera" size={20} strokeWidth={2} /></div><span className="font-bold text-lg tracking-wide">Snaps</span></button>
+                                <button onClick={() => { setActiveTab('blog'); setSelectedPost(null); }} className={`group w-full text-left px-5 py-3 rounded-xl transition-all duration-500 flex items-center gap-0 hover:gap-3 ${activeTab === 'blog' ? theme.activeNav : theme.inactiveNav}`}><div className="w-0 overflow-hidden opacity-0 group-hover:w-5 group-hover:opacity-100 transition-all duration-300"><Icon name="headphones" size={20} strokeWidth={2} /></div><span className="font-bold text-lg tracking-wide">The Soundstage</span></button>
+                            </nav>
+                        </div>
+                        <div className={`mt-8 lg:mt-0 pt-8 border-t ${theme.sidebarBorder}`}>
+                            <div className="flex items-center justify-between"><div className={`flex gap-4 ${theme.mutedText}`}><a href={`mailto:${profile.email}`} className="hover:text-current transition-colors opacity-70 hover:opacity-100"><Icon name="mail" size={24} strokeWidth={1.5} /></a><a href={profile.socials.headfi} target="_blank" className="hover:text-current transition-colors opacity-70 hover:opacity-100 flex items-center gap-1"><Icon name="speaker" size={24} strokeWidth={1.5} /></a></div><div className="flex gap-3"><button onClick={() => setFontMode(prev => prev === 'cm' ? 'sans' : 'cm')} className={`p-2 rounded-full transition-all duration-500 ${fontMode === 'cm' ? theme.activePill : theme.inactivePill}`}><Icon name="type" size={18} strokeWidth={1.5} /></button><button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2 rounded-full transition-all duration-500 ${theme.activePill} ${isDarkMode ? 'text-[#fbbf24]' : 'text-[#57534E]'}`}>{isDarkMode ? <Icon name="sun" size={18} /> : <Icon name="moon" size={18} />}</button></div></div>
+                            <p className={`mt-6 text-sm font-bold tracking-wider opacity-60 ${theme.mutedText}`}>© 2025 {profile.name.split(' ')[0]}</p>
+                        </div>
+                    </div>
+                    <main className="lg:ml-72 min-h-screen relative z-10"><div className="max-w-4xl mx-auto p-8 lg:p-16">
+                        {activeTab === 'academic' && <div className="space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                            <section><h2 className={`text-base font-black uppercase tracking-[0.2em] mb-8 ${theme.mutedText}`}>About Me</h2><p className="text-2xl font-medium leading-loose opacity-90">{academicContent.about}</p></section>
+                            <section><h2 className={`text-base font-black uppercase tracking-[0.2em] mb-8 opacity-80 ${theme.mutedText}`}>Education</h2><div className="space-y-8">{academicContent.education.map((edu, i) => <div key={i} className={`p-6 rounded-2xl transition-all duration-500 flex flex-col sm:flex-row sm:justify-between sm:items-baseline ${theme.card3D} ${theme.card3DHover}`}><div><h3 className="text-xl font-bold">{edu.degree}</h3><p className={`text-lg font-medium italic ${theme.mutedText}`}>{edu.school}</p></div><span className={`text-base mt-2 sm:mt-0 font-extrabold opacity-80 px-4 py-1.5 rounded-xl ${theme.inset3D} ${theme.mutedText}`}>{edu.year}</span></div>)}</div></section>
+                            <section><h2 className={`text-base font-black uppercase tracking-[0.2em] mb-8 opacity-80 ${theme.mutedText}`}>Preprints</h2><div className="space-y-5">{academicContent.publications.map((pub, i) => <div key={i} className={`group p-6 rounded-2xl transition-all duration-500 cursor-default ${theme.card3D} ${theme.card3DHover}`}><div className="flex justify-between items-start gap-4"><h3 className="text-xl font-bold italic serif leading-snug">{pub.link ? <a href={pub.link} target="_blank" className="hover:opacity-70 transition-opacity">{pub.title}</a> : pub.title}</h3>{pub.link && <a href={pub.link} target="_blank" className={`opacity-0 group-hover:opacity-100 transition-opacity text-[#B31B1B]`}><ArxivLogo size={28} /></a>}</div><div className="flex justify-between items-center mt-3"><span className={`text-lg font-medium ${theme.mutedText}`}>{pub.journal}</span><span className={`text-sm font-extrabold tracking-wider px-4 py-1.5 rounded-xl ${theme.inset3D} ${theme.mutedText}`}>{pub.year}</span></div></div>)}</div></section>
+                            <section><h2 className={`text-base font-black uppercase tracking-[0.2em] mb-8 opacity-80 ${theme.mutedText}`}>Teaching & Mentoring</h2><div className="grid gap-5">{academicContent.teaching.map((teach, i) => <div key={i} className={`p-6 rounded-2xl transition-all duration-500 flex flex-col sm:flex-row sm:justify-between sm:items-center ${theme.card3D} ${theme.card3DHover}`}><div><h3 className="font-bold text-xl">{teach.course}</h3><p className={`text-lg font-medium ${theme.mutedText}`}>{teach.role}</p></div><span className={`text-sm font-extrabold uppercase tracking-wider px-4 py-1.5 rounded-xl mt-4 sm:mt-0 ${theme.inset3D} ${theme.mutedText}`}>{teach.location}</span></div>)}</div></section>
+                        </div>}
+                        {activeTab === 'math' && !selectedPost && <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 pb-6 border-b border-opacity-40 border-neutral-300"><h2 className="text-5xl font-medium tracking-tight">Mathematical Notes</h2></div><div className="grid gap-8">{mathPosts.map(post => <article key={post.id} onClick={() => setSelectedPost(post)} className={`group p-8 rounded-2xl transition-all cursor-pointer duration-500 ${theme.card3D} ${theme.card3DHover}`}><div className="flex items-center gap-3 mb-4"><span className={`px-4 py-1.5 rounded-xl text-xs uppercase tracking-widest font-extrabold flex items-center gap-2 ${theme.inset3D} ${theme.textMath}`}><Icon name="sigma" size={16} />{post.category}</span><span className={`text-sm font-extrabold uppercase tracking-wider opacity-60 ${theme.mutedText}`}>{post.date}</span></div><h3 className="text-3xl font-bold mb-3 group-hover:opacity-80 transition-opacity">{post.title}</h3><p className={`text-xl font-medium leading-relaxed line-clamp-2 opacity-80 ${theme.mutedText}`}><LatexContent content={post.excerpt} isReady={katexLoaded} /></p><div className="mt-6 flex items-center text-base font-extrabold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0">Read Entry <Icon name="arrow-right" size={20} className="ml-2" /></div></article>)}</div></div>}
+                        {activeTab === 'snaps' && <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 pb-6 border-b border-opacity-40 border-neutral-300"><h2 className="text-5xl font-medium tracking-tight">Snaps</h2><button className={`px-6 py-2 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center gap-2 transition-all duration-300 ${theme.activePill}`}><Icon name="plus" size={16} /> Upload</button></div><div className="columns-1 md:columns-2 gap-8 space-y-8">{photos.map(photo => <div key={photo.id} className={`break-inside-avoid p-4 rounded-2xl transition-all duration-500 ${theme.card3D} ${theme.card3DHover}`}><div className="relative overflow-hidden rounded-xl mb-4 group" onContextMenu={e => e.preventDefault()}><div className="absolute inset-0 z-10 bg-transparent" /><img src={photo.src} alt={photo.title} className="object-cover w-full h-auto transform hover:scale-105 transition-transform duration-700 select-none pointer-events-none" /></div><div className="flex justify-between items-start"><div><h3 className="text-xl font-bold mb-1">{photo.title}</h3><p className={`text-sm ${theme.mutedText}`}>{photo.location}</p></div><div className="text-right"><span className={`px-3 py-1 rounded-lg text-xs font-bold font-mono block mb-1 ${theme.inset3D} ${theme.mutedText}`}>{photo.date}</span><span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider block ${theme.inset3D} ${theme.mutedText}`}>{photo.settings}</span></div></div></div>)}</div></div>}
+                        {activeTab === 'blog' && !selectedPost && <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10 pb-6 border-b border-opacity-40 border-neutral-300"><h2 className="text-5xl font-medium tracking-tight">Notes & Reviews</h2><div className="flex flex-wrap gap-2">{['All', 'Movies', 'Music', 'Audiophilia'].map(cat => <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-1.5 text-sm font-bold uppercase tracking-widest rounded-full transition-all duration-300 ${selectedCategory === cat ? theme.activePill : theme.inactivePill}`}>{cat}</button>)}</div></div><div className="grid gap-8">{filteredSoundstagePosts.map(post => <article key={post.id} onClick={() => setSelectedPost(post)} className={`group p-8 rounded-2xl transition-all cursor-pointer duration-500 ${theme.card3D} ${theme.card3DHover}`}><div className="flex items-center gap-3 mb-4"><span className={`px-4 py-1.5 rounded-xl text-xs uppercase tracking-widest font-extrabold flex items-center gap-2 ${theme.inset3D} ${post.category === 'Audiophilia' ? theme.textAudiophilia : post.category === 'Movies' ? theme.textMovies : post.category === 'Music' ? theme.textMusic : theme.textDefault}`}><Icon name={post.category === 'Audiophilia' ? 'headphones' : post.category === 'Movies' ? 'film' : post.category === 'Music' ? 'music' : 'file-text'} size={16} />{post.category}</span><span className={`text-sm font-extrabold uppercase tracking-wider opacity-60 ${theme.mutedText}`}>{post.date}</span></div><h3 className="text-3xl font-bold mb-3 group-hover:opacity-80 transition-opacity">{post.title}</h3><p className={`text-xl font-medium leading-relaxed line-clamp-2 opacity-80 ${theme.mutedText}`}><LatexContent content={post.excerpt} isReady={katexLoaded} /></p><div className="mt-6 flex items-center text-base font-extrabold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0">Read Entry <Icon name="arrow-right" size={20} className="ml-2" /></div></article>)}</div></div>}
+                        {(activeTab === 'blog' || activeTab === 'math') && selectedPost && <div className="animate-in fade-in zoom-in-95 duration-700"><button onClick={() => setSelectedPost(null)} className={`mb-8 text-base font-bold flex items-center gap-2 transition-colors opacity-60 hover:opacity-100 ${theme.mutedText} hover:text-current`}><Icon name="chevron-right" className="rotate-180" size={20} /> <span className="uppercase tracking-widest">Back to list</span></button><article className={`prose lg:prose-2xl max-w-none ${isDarkMode ? 'prose-invert' : 'prose-stone'}`}><div className={`mb-10 pb-10 border-b ${theme.cardBorder}`}><div className="flex gap-4 mb-6"><span className={`px-4 py-1.5 rounded-xl text-sm font-extrabold uppercase tracking-widest ${theme.inset3D} ${theme.mutedText}`}>{selectedPost.category}</span></div><h1 className="text-6xl font-bold mb-6 leading-tight">{selectedPost.title}</h1><time className={`block font-mono text-lg font-bold opacity-60 ${theme.mutedText}`}>{selectedPost.date}</time></div><div className={`leading-loose whitespace-pre-line opacity-90 text-2xl font-medium`}><LatexContent content={selectedPost.content} isReady={katexLoaded} /></div></article></div>}
+                    </div></main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
